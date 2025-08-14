@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.czx.mapper.UserMapper">
+    
+    <resultMap id="UserResultMap" type="com.czx.pojo.User">
+        <id column="id" property="id"/>
+        <result column="username" property="username"/>
+        <result column="email" property="email"/>
+        <result column="password" property="password"/>
+        <result column="is_active" property="is_active"/>
+        <result column="is_admin" property="is_admin"/>
+        <result column="created_at" property="created_at"/>
+        <result column="updated_at" property="updated_at"/>
+    </resultMap>
+    
+    <select id="findByUsername" resultMap="UserResultMap">
+        SELECT * FROM users WHERE username = #{username}
+    </select>
+    
+    <select id="findById" resultMap="UserResultMap">
+        SELECT * FROM users WHERE id = #{id}
+    </select>
+    
+    <insert id="insert" parameterType="com.czx.pojo.User" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO users (username, email, password, is_active, is_admin, created_at, updated_at)
+        VALUES (#{username}, #{email}, #{password}, #{is_active}, #{is_admin}, NOW(), NOW())
+    </insert>
+    
+    <update id="update" parameterType="com.czx.pojo.User">
+        UPDATE users 
+        SET username = #{username},
+            email = #{email},
+            password = #{password},
+            is_active = #{is_active},
+            is_admin = #{is_admin},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+    
+</mapper>
