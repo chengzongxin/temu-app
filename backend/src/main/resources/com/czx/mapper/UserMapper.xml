@@ -22,8 +22,8 @@
     </select>
     
     <insert id="insert" parameterType="com.czx.pojo.User" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO users (username, email, password, is_active, is_admin, created_at, updated_at)
-        VALUES (#{username}, #{email}, #{password}, #{is_active}, #{is_admin}, NOW(), NOW())
+        INSERT INTO users (username, email, password, password_hash, is_active, is_admin, created_at, updated_at)
+        VALUES (#{username}, #{email}, #{password}, #{password_hash}, #{is_active}, #{is_admin}, NOW(), NOW())
     </insert>
     
     <update id="update" parameterType="com.czx.pojo.User">
