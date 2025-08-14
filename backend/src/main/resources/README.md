@@ -72,7 +72,7 @@ create table operate_log(
     operate_time datetime comment '操作时间',
     class_name varchar(100) comment '操作的类名',
     method_name varchar(100) comment '操作的方法名',
-    method_params varchar(1000) comment '方法参数',
+    method_params text comment '方法参数',
     return_value varchar(2000) comment '返回值',
     cost_time bigint comment '方法执行耗时, 单位:ms'
 ) comment '操作日志表';

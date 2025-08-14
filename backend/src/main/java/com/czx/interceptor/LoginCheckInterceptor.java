@@ -29,7 +29,7 @@ public class LoginCheckInterceptor implements HandlerInterceptor {
         }
 
         // 不需要认证的路径
-        if (url.contains("test")||url.contains("upload")||url.contains("download")||url.contains("wgt")||url.contains("png")||url.contains("index")||url.contains("health")) {
+        if (url.contains("test") || url.contains("health")) {
             log.info("无需认证的路径, 放行...");
             return true;
         }

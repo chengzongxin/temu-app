@@ -58,6 +58,8 @@ public class LogAspect {
         String returnValue = JSONObject.toJSONString(result);
 
         if (result != null && result.getClass().isArray()) returnValue = "isArray";
+
+        if (returnValue.length() > 1000) returnValue = returnValue.substring(0, 1000) + "...";
         //操作耗时
         Long costTime = end - begin;
 
