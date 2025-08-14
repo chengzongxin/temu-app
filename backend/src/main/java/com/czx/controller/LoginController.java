@@ -5,10 +5,10 @@ import com.czx.pojo.User;
 import com.czx.pojo.Result;
 import com.czx.service.UserService;
 import com.czx.utils.JwtUtils;
+import com.czx.utils.RequestUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
 
@@ -35,5 +35,34 @@ public class LoginController {
         }
         //登录失败, 返回错误信息
         return Result.error("用户名或密码错误");
+    }
+
+    @GetMapping("/api/auth/me")
+    public Result getCurrentUser(HttpServletRequest request){
+        log.info("获取当前用户信息");
+        
+        // 从request中获取用户ID和用户名
+        Integer userId = RequestUtils.getUserId(request);
+        String username = RequestUtils.getUsername(request);
+        
+        if (userId == null || username == null) {
+            return Result.error("用户未认证");
+        }
+        
+        try {
+            // 从数据库获取完整的用户信息
+            User user = userService.findById(userId);
+            if (user != null) {
+                // 不返回敏感信息
+                user.setPassword_hash(null);
+                user.setPassword(null);
+                return Result.success(user);
+            } else {
+                return Result.error("用户不存在");
+            }
+        } catch (Exception e) {
+            log.error("获取用户信息失败: {}", e.getMessage());
+            return Result.error("获取用户信息失败");
+        }
     }
 }

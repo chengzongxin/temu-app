@@ -36,58 +36,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 从localStorage恢复认证状态
+  // 从localStorage恢复认证状态并验证token
   useEffect(() => {
-    const savedToken = localStorage.getItem('auth_token');
-    const savedUser = localStorage.getItem('auth_user');
-    
-    if (savedToken && savedUser) {
+    const initializeAuth = async () => {
       try {
-        setToken(savedToken);
-        setUser(JSON.parse(savedUser));
+        const savedToken = localStorage.getItem('auth_token');
+        const savedUser = localStorage.getItem('auth_user');
+        
+        if (savedToken && savedUser) {
+          // 先设置token，避免重复验证
+          setToken(savedToken);
+          
+          try {
+            // 验证token有效性
+            const response = await fetch('/api/auth/me', {
+              headers: {
+                'token': savedToken,
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (response.ok) {
+              const responseData = await response.json();
+              if (responseData.code === 1 && responseData.data) {
+                // token有效，设置用户信息
+                setUser(responseData.data);
+                localStorage.setItem('auth_user', JSON.stringify(responseData.data));
+              } else {
+                // token无效，清除存储的信息
+                throw new Error('Token validation failed');
+              }
+            } else {
+              // 请求失败，清除存储的信息
+              throw new Error('Token validation request failed');
+            }
+          } catch (error) {
+            console.error('Token validation failed:', error);
+            // 清除无效的认证信息
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('auth_user');
+            setToken(null);
+            setUser(null);
+          }
+        }
       } catch (error) {
-        console.error('Failed to parse saved user data:', error);
+        console.error('Auth initialization failed:', error);
+        // 确保清除所有认证信息
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+        setToken(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
       }
-    }
-    setLoading(false);
+    };
+
+    initializeAuth();
   }, []);
-
-  // 验证token有效性 - 只在token存在时验证
-  useEffect(() => {
-    if (token && !user) {
-      validateToken();
-    }
-  }, [token, user]);
-
-  const validateToken = async () => {
-    if (!token) return;
-    
-    try {
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'token': token,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Token validation failed');
-      }
-
-      const responseData = await response.json();
-      if (responseData.code === 1 && responseData.data) {
-        setUser(responseData.data);
-        localStorage.setItem('auth_user', JSON.stringify(responseData.data));
-      } else {
-        throw new Error(responseData.msg || 'Token validation failed');
-      }
-    } catch (error) {
-      console.error('Token validation failed:', error);
-      logout();
-    }
-  };
 
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
