@@ -7,7 +7,6 @@ import { useNavigate } from "react-router-dom";
 const { Text } = Typography;
 
 interface ConfigData {
-  kuajingmaihuo_cookie: string;
   agentseller_cookie: string;
   mallid: string;
   parent_msg_id?: string;
@@ -198,8 +197,7 @@ const ConfigPage: React.FC = () => {
                 <br />
                 {configStatus.missing_fields.map(field => (
                   <Tag key={field} color="red" style={{ marginTop: 4 }}>
-                    {field === 'kuajingmaihuo_cookie' ? '跨境猫卖家中心Cookie' :
-                     field === 'agentseller_cookie' ? 'TEMU代理商中心Cookie' :
+                    {field === 'agentseller_cookie' ? 'TEMU代理商中心Cookie' :
                      field === 'mallid' ? 'MallId' : field}
                   </Tag>
                 ))}
@@ -225,30 +223,20 @@ const ConfigPage: React.FC = () => {
       
       <Form 
         form={form} 
-        labelCol={{ span: 4 }} 
-        wrapperCol={{ span: 8 }} 
+        labelCol={{ span: 6 }} 
+        wrapperCol={{ span: 16 }} 
         onFinish={onFinish}
         layout="vertical"
       >
-        <Form.Item 
-          label="跨境猫卖家中心Cookie" 
-          name="kuajingmaihuo_cookie"
-          rules={[{ required: true, message: '请输入跨境猫卖家中心Cookie' }]}
-        >
-          <Input.TextArea 
-            rows={3} 
-            placeholder="请输入 https://seller.kuajingmaihuo.com/ 的Cookie信息" 
-          />
-        </Form.Item>
-        
         <Form.Item 
           label="TEMU代理商中心Cookie" 
           name="agentseller_cookie"
           rules={[{ required: true, message: '请输入TEMU代理商中心Cookie' }]}
         >
           <Input.TextArea 
-            rows={3} 
+            rows={6} 
             placeholder="请输入 https://agentseller.temu.com/ 的Cookie信息" 
+            style={{ fontSize: '14px' }}
           />
         </Form.Item>
         
@@ -257,7 +245,10 @@ const ConfigPage: React.FC = () => {
           name="mallid"
           rules={[{ required: true, message: '请输入MallId' }]}
         >
-          <Input placeholder="请输入MallId" />
+          <Input 
+            placeholder="请输入MallId" 
+            style={{ fontSize: '14px' }}
+          />
         </Form.Item>
         
         <Form.Item>

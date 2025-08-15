@@ -218,12 +218,12 @@ public class TemuServiceImpl implements TemuService {
      */
     private Map<String, Object> batchOfflineProducts(UserConfig config, List<Long> productIds, int maxThreads) {
         try {
-            String kuajingmaihuo_cookie = config.getKuajingmaihuo_cookie();
+            String agentseller_cookie = config.getAgentseller_cookie();
             String mallid = config.getMallid();
             String parent_msg_id = config.getParent_msg_id();
             String tool_id = config.getTool_id();
             String parent_msg_timestamp = config.getParent_msg_timestamp();
-            String origin_url = "https://seller.kuajingmaihuo.com";
+            String origin_url = "https://agentseller.temu.com";
             
             // 检查缓存是否有效（24小时）
             boolean cache_valid = false;
@@ -241,7 +241,7 @@ public class TemuServiceImpl implements TemuService {
             
             if (!cache_valid) {
                 // 缓存无效，重新获取parent_msg_id和tool_id
-                Map<String, Object> init_result = initializeOfflineSession(kuajingmaihuo_cookie, mallid, origin_url);
+                Map<String, Object> init_result = initializeOfflineSession(agentseller_cookie, mallid, origin_url);
                 if (!(Boolean) init_result.get("success")) {
                     return init_result;
                 }
@@ -280,7 +280,7 @@ public class TemuServiceImpl implements TemuService {
                 // 提交所有任务
                 List<CompletableFuture<Map<String, Object>>> futures = productIds.stream()
                     .map(productId -> CompletableFuture.supplyAsync(() -> 
-                        processSingleProduct(productId, final_parent_msg_id, final_tool_id, kuajingmaihuo_cookie, mallid, origin_url), executor))
+                        processSingleProduct(productId, final_parent_msg_id, final_tool_id, agentseller_cookie, mallid, origin_url), executor))
                     .collect(Collectors.toList());
                 
                 // 等待所有任务完成
@@ -330,8 +330,8 @@ public class TemuServiceImpl implements TemuService {
      */
     private Map<String, Object> initializeOfflineSession(String cookie, String mallid, String origin_url) {
         try {
-            String init_url = "https://seller.kuajingmaihuo.com/bg/cute/api/merchantService/chat/sendMessage";
-            String query_url = "https://seller.kuajingmaihuo.com/bg/cute/api/merchantService/chat/queryMessage";
+            String init_url = "https://agentseller.temu.com/bg/cute/api/merchantService/chat/sendMessage";
+            String query_url = "https://agentseller.temu.com/bg/cute/api/merchantService/chat/queryMessage";
             
             // 第一步：发送"商品下架"消息初始化对话
             Map<String, Object> init_payload = new HashMap<>();
@@ -431,7 +431,7 @@ public class TemuServiceImpl implements TemuService {
             
             // 如果还没有tool_id，重新获取工具列表
             if (tool_id == null) {
-                String tool_list_url = "https://seller.kuajingmaihuo.com/marvel-supplier/api/ultraman/chat/reception/querySelfServiceTools";
+                String tool_list_url = "https://agentseller.temu.com/api/kiana/marvel-supplier/api/ultraman/chat/reception/querySelfServiceTools";
                 Optional<JsonNode> tool_list_resp = networkRequest.post(tool_list_url, new HashMap<>(), cookie, mallid, origin_url);
                 
                 if (tool_list_resp.isPresent() && JsonUtils.getBoolean(tool_list_resp.get(), "success")) {
@@ -484,7 +484,7 @@ public class TemuServiceImpl implements TemuService {
         
         try {
             // 1. 查询商品基础信息
-            String product_info_url = "https://seller.kuajingmaihuo.com/marvel-supplier/api/ultraman/chat/reception/queryProductSkcBasicInfo";
+            String product_info_url = "https://agentseller.temu.com/api/kiana/marvel-supplier/api/ultraman/chat/reception/queryProductSkcBasicInfo";
             Map<String, Object> product_info_payload = new HashMap<>();
             product_info_payload.put("productSkcId", productId);
             
@@ -499,7 +499,7 @@ public class TemuServiceImpl implements TemuService {
             String product_img = JsonUtils.getString(product_info, "productPicture");
             
             // 2. 预检查是否可以下架
-            String precheck_url = "https://seller.kuajingmaihuo.com/marvel-supplier/api/ultraman/chat/reception/queryPreInterceptForToolSubmit";
+            String precheck_url = "https://agentseller.temu.com/api/kiana/marvel-supplier/api/ultraman/chat/reception/queryPreInterceptForToolSubmit";
             Map<String, Object> precheck_payload = new HashMap<>();
             precheck_payload.put("toolId", tool_id);
             precheck_payload.put("dataId", String.valueOf(productId));
@@ -524,8 +524,7 @@ public class TemuServiceImpl implements TemuService {
             offline_content.put("dataType", 1);
             offline_content.put("dataId", String.valueOf(productId));
             offline_content.put("toolId", tool_id);
-            
-            String offline_url = "https://seller.kuajingmaihuo.com/bg/cute/api/merchantService/chat/sendMessage";
+            String offline_url = "https://agentseller.temu.com/bg/cute/api/merchantService/chat/sendMessage";
             Map<String, Object> offline_payload = new HashMap<>();
             // 确保parentMsgId是字符串类型，与Python版本保持一致
             offline_payload.put("parentMsgId", String.valueOf(parent_msg_id));
@@ -549,7 +548,7 @@ public class TemuServiceImpl implements TemuService {
             String offline_msg_id = JsonUtils.getString(JsonUtils.getNode(offline_response.get(), "result"), "msgId");
             
             // 4. 轮询查询下架结果
-            String query_url = "https://seller.kuajingmaihuo.com/bg/cute/api/merchantService/chat/queryMessage";
+            String query_url = "https://agentseller.temu.com/bg/cute/api/merchantService/chat/queryMessage";
             int max_retries = 10;
             int retry_count = 0;
             boolean offline_success = false;
