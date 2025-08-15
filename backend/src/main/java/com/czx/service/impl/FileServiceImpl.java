@@ -121,6 +121,53 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public byte[] downloadFile(Integer id) {
-        return new byte[0];
+        try {
+            FileRecord fileRecord = fileRecordMapper.findById(id);
+            if (fileRecord == null) {
+                log.warn("文件不存在，ID: {}", id);
+                return null;
+            }
+            
+            Path filePath = Paths.get(fileRecord.getFile_path());
+            if (!Files.exists(filePath)) {
+                log.warn("物理文件不存在: {}", fileRecord.getFile_path());
+                return null;
+            }
+            
+            return Files.readAllBytes(filePath);
+        } catch (Exception e) {
+            log.error("下载文件失败，ID: {}, 错误: {}", id, e.getMessage());
+            return null;
+        }
+    }
+    
+    @Override
+    public byte[] downloadFileByPath(String filePath) {
+        try {
+            // 构建完整的文件路径
+            Path fullPath = Paths.get(filePath);
+            
+            // 安全检查：确保文件路径在uploads目录内
+            Path uploadsDir = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path normalizedPath = fullPath.toAbsolutePath().normalize();
+            
+            if (!normalizedPath.startsWith(uploadsDir)) {
+                log.warn("尝试访问uploads目录外的文件: {}", filePath);
+                return null;
+            }
+            
+            // 检查文件是否存在
+            if (!Files.exists(normalizedPath)) {
+                log.warn("文件不存在: {}", filePath);
+                return null;
+            }
+            
+            // 读取文件内容
+            return Files.readAllBytes(normalizedPath);
+            
+        } catch (Exception e) {
+            log.error("通过路径下载文件失败: {}", e.getMessage());
+            return null;
+        }
     }
 }

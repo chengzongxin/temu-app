@@ -18,7 +18,9 @@ import {
   FileImageOutlined,
   FilePdfOutlined,
   FileWordOutlined,
-  FileExcelOutlined
+  FileExcelOutlined,
+  FileZipOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { FileManagerStore } from './stores/FileManagerStore';
@@ -38,7 +40,10 @@ const FileManager: React.FC = observer(() => {
   // 组件挂载时获取文件列表
   useEffect(() => {
     if (token) {
+      console.log('开始获取文件列表，token:', token);
       fileManagerStore.fetchFileList(token);
+    } else {
+      console.log('没有token，跳过文件列表获取');
     }
   }, [token]);
 
@@ -54,6 +59,10 @@ const FileManager: React.FC = observer(() => {
         return <FileWordOutlined style={{ color: '#1890ff' }} />;
       case 'excel':
         return <FileExcelOutlined style={{ color: '#52c41a' }} />;
+      case 'archive':
+        return <FileZipOutlined style={{ color: '#faad14' }} />;
+      case 'text':
+        return <FileTextOutlined style={{ color: '#722ed1' }} />;
       default:
         return <FileOutlined style={{ color: '#8c8c8c' }} />;
     }

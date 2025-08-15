@@ -10,4 +10,6 @@ public interface FileService {
     FileRecord getFileById(Integer id);
     boolean deleteFile(Integer id);
     byte[] downloadFile(Integer id);
+    // 新增方法：通过文件路径下载
+    byte[] downloadFileByPath(String filePath);
 }

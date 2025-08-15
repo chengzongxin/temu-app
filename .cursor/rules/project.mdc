@@ -1,0 +1,8 @@
+---
+alwaysApply: false
+---
+你现在在一个前后端分离项目总目录，前端是react技术栈、后端是Java+springboot
+
+项目位于 @frontend/ @backend/ 
+
+请先熟悉我的项目，了解有哪些接口功能，后续我要给你一些开发任务

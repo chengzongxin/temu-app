@@ -57,6 +57,40 @@ public class FileController {
         }
     }
     
+    // 新增：通过文件路径下载文件
+    @GetMapping("/download")
+    public ResponseEntity<ByteArrayResource> downloadFileByPath(
+            @RequestParam String filePath, 
+            HttpServletRequest request) {
+        try {
+            // 检查用户是否已认证
+            if (!RequestUtils.isAuthenticated(request)) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            // 根据文件路径获取文件数据
+            byte[] fileData = fileService.downloadFileByPath(filePath);
+            if (fileData == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // 从文件路径中提取文件名
+            String fileName = filePath.substring(filePath.lastIndexOf("/") + 1);
+            
+            ByteArrayResource resource = new ByteArrayResource(fileData);
+            
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, 
+                            "attachment; filename=\"" + fileName + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(resource);
+                    
+        } catch (Exception e) {
+            log.error("文件下载失败: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+    
     @GetMapping("/download/{id}")
     public ResponseEntity<ByteArrayResource> downloadFile(@PathVariable Integer id, HttpServletRequest request) {
         try {

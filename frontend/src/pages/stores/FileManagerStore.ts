@@ -26,7 +26,12 @@ export class FileManagerStore {
     this.loading = true;
     try {
       const response = await getFileList(token);
-      this.fileList = response.data || [];
+      // 修复：API 现在直接返回文件数组，不需要访问 .data 属性
+      this.fileList = response || [];
+      
+      // 添加调试信息
+      console.log('获取到的文件列表:', response);
+      console.log('文件数量:', this.fileList.length);
     } catch (error) {
       console.error('获取文件列表错误:', error);
       message.error('获取文件列表失败');
@@ -61,7 +66,9 @@ export class FileManagerStore {
   // 下载文件
   async handleDownload(file: FileRecord, token: string) {
     try {
-      await downloadFile(file.download_url, file.original_name, token);
+      // 构造下载URL，因为后端返回的是file_path而不是download_url
+      const downloadUrl = `/api/files/download?filePath=${encodeURIComponent(file.file_path)}`;
+      await downloadFile(downloadUrl, file.original_name, token);
       message.success('文件下载成功');
     } catch (error) {
       console.error('下载错误:', error);
@@ -92,14 +99,23 @@ export class FileManagerStore {
 
   // 获取文件图标类型
   getFileIconType(fileType: string): string {
-    if (fileType.startsWith('image/')) {
+    // 转换为小写以便比较
+    const type = fileType.toLowerCase();
+    
+    if (type.startsWith('image/')) {
       return 'image';
-    } else if (fileType.includes('pdf')) {
+    } else if (type.includes('pdf')) {
       return 'pdf';
-    } else if (fileType.includes('word') || fileType.includes('document')) {
+    } else if (type.includes('word') || type.includes('document') || 
+               type.includes('application/vnd.openxmlformats-officedocument.wordprocessingml')) {
       return 'word';
-    } else if (fileType.includes('excel') || fileType.includes('spreadsheet')) {
+    } else if (type.includes('excel') || type.includes('spreadsheet') || 
+               type.includes('application/vnd.openxmlformats-officedocument.spreadsheetml')) {
       return 'excel';
+    } else if (type.includes('zip') || type.includes('rar') || type.includes('7z')) {
+      return 'archive';
+    } else if (type.includes('text/') || type.includes('application/json') || type.includes('application/xml')) {
+      return 'text';
     } else {
       return 'file';
     }

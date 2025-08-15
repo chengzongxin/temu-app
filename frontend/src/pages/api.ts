@@ -1,9 +1,9 @@
-import type { FileRecord, FileListResponse, UploadResponse } from './types/file';
+import type { FileRecord, FileListResponse, UploadResponse, ApiResponse } from './types/file';
 
 // API 基础配置
 const API_BASE_URL = '/api';
 
-// 通用请求函数
+// 通用请求函数 - 统一处理 { code, msg, data } 结构
 const request = async <T>(
   url: string, 
   options: RequestInit = {}
@@ -20,7 +20,7 @@ const request = async <T>(
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  const responseData = await response.json();
+  const responseData: ApiResponse<T> = await response.json();
   if (responseData.code === 1) {
     return responseData.data;
   } else {
@@ -29,8 +29,8 @@ const request = async <T>(
 };
 
 // 获取文件列表
-export const getFileList = (token: string): Promise<FileListResponse> => {
-  return request<FileListResponse>('/files/list', {
+export const getFileList = (token: string): Promise<FileRecord[]> => {
+  return request<FileRecord[]>('/files/list', {
     headers: {
       'token': token,
     },
@@ -55,7 +55,7 @@ export const uploadFile = (
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    return response.json().then(data => {
+    return response.json().then((data: ApiResponse<UploadResponse>) => {
       if (data.code === 1) {
         return data.data;
       } else {
@@ -70,7 +70,7 @@ export const deleteFile = (
   fileId: number, 
   token: string
 ): Promise<{ success: boolean; message: string }> => {
-  return request(`/files/delete/${fileId}`, {
+  return request<{ success: boolean; message: string }>(`/files/delete/${fileId}`, {
     method: 'DELETE',
     headers: {
       'token': token,
@@ -94,9 +94,26 @@ export const downloadFile = async (
     throw new Error(`HTTP error! status: ${response.status}`);
   }
 
-  const responseData = await response.json();
-  if (responseData.code === 1) {
-    // 如果后端返回的是文件流，直接处理blob
+  // 检查响应类型，如果是文件流直接下载，如果是JSON则检查状态
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    const responseData: ApiResponse = await response.json();
+    if (responseData.code === 1) {
+      // 如果后端返回的是文件流，直接处理blob
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } else {
+      throw new Error(responseData.msg || '下载失败');
+    }
+  } else {
+    // 直接处理文件流
     const blob = await response.blob();
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -106,7 +123,5 @@ export const downloadFile = async (
     a.click();
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
-  } else {
-    throw new Error(responseData.msg || '下载失败');
   }
 }; 
