@@ -256,11 +256,11 @@ file:
 
 ### 1. 用户登录
 ```bash
-curl -X POST http://localhost:8000/login \
+curl -X POST http://106.12.214.144:8000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "admin",
-    "passwordHash": "$2b$12$t9KUWZ03VEOHHbxVEakLDedk1YkFtSgJ9FkBo92nqNa63u.Vh1Wam"
+    "password": "1122"
   }'
 ```
 

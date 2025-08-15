@@ -1,7 +1,7 @@
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/temu_app
+    url: jdbc:mysql://localhost:3306/temu_app #jdbc:mysql://106.12.214.144:3306/temu_app
     username: root
     password: 123456789
   servlet:
