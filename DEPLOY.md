@@ -420,3 +420,15 @@ export DB_URL=jdbc:mysql://106.12.214.144:3306/temu_app
 ```bash
 curl -X POST http://106.12.214.144:8000/api/auth/login -H "Content-Type: application/json"  -d '{"username": "admin","password": "1122"}'
 ```
+
+
+
+```bash
+scp target/core-service-0.0.1-SNAPSHOT.jar root@106.12.214.144:/home/core-service.jar
+ls -lh /home/core-service.jar
+nohup java -jar myapp.jar > backend.log 2>&1 &
+nohup java -jar core-service.jar \
+  --spring.datasource.url=jdbc:mysql://106.12.214.144:3306/temu_app \
+  --spring.datasource.username=root \
+  --spring.datasource.password=123456789 backend.log 2>&1 &
+```
