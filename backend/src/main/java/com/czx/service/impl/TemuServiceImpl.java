@@ -577,7 +577,7 @@ public class TemuServiceImpl implements TemuService {
                     if (result_messages != null && result_messages.isArray()) {
                         for (JsonNode msg : result_messages) {
                             String content = JsonUtils.getString(msg, "content");
-                            if (content != null && content.contains("【商品下架】咨询结果已更新")) {
+                            if (content != null && content.contains("您好")) {
                                 // 检查是否包含当前商品ID（支持多种格式）
                                 if (content.contains("SKC ID：" + productId) || 
                                     content.contains("SKC ID:" + productId) ||
@@ -593,14 +593,14 @@ public class TemuServiceImpl implements TemuService {
                     if (current_product_result != null) {
                         if (current_product_result.contains("已下架")) {
                             offline_success = true;
-                            result.put("message", "下架成功");
+                            result.put("message", current_product_result);
                         } else if (current_product_result.contains("暂时无法操作下架")) {
-                            result.put("message", "商品未发布到站点，无法下架");
+                            result.put("message", current_product_result);
                         } else if (current_product_result.contains("已在您的上次咨询后处理成功")) {
-                            result.put("message", "商品已在之前处理成功");
+                            result.put("message", current_product_result);
                             offline_success = true;  // 视为成功
                         } else {
-                            result.put("message", "下架结果：" + current_product_result);
+                            result.put("message", current_product_result);
                         }
                         break;
                     }

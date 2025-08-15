@@ -24,13 +24,11 @@ public class UserConfigServiceImpl implements UserConfigService {
             if (existingConfig != null) {
                 // 检查配置是否有变化
                 boolean configChanged = (
-                    !existingConfig.getKuajingmaihuo_cookie().equals(config.getKuajingmaihuo_cookie()) ||
                     !existingConfig.getAgentseller_cookie().equals(config.getAgentseller_cookie()) ||
                     !existingConfig.getMallid().equals(config.getMallid())
                 );
                 
                 // 更新配置
-                existingConfig.setKuajingmaihuo_cookie(config.getKuajingmaihuo_cookie());
                 existingConfig.setAgentseller_cookie(config.getAgentseller_cookie());
                 existingConfig.setMallid(config.getMallid());
                 
