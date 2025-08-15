@@ -1,6 +1,9 @@
 package com.czx.aop;
 
 import com.alibaba.fastjson.JSONObject;
+import com.czx.mapper.UserMapper;
+import com.czx.pojo.User;
+import com.czx.service.UserService;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +26,8 @@ public class LogAspect {
     @Autowired
     private OperateLogMapper operateLogMapper;
     @Autowired
+    private UserMapper userMapper;
+    @Autowired
     private HttpServletRequest request;
     @Around("execution(* com.czx.service.*.*(..))")//切入点表达式
     public Object recordTime(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -30,10 +35,16 @@ public class LogAspect {
         //操作人ID - 当前登录员工ID
         //获取请求头中的jwt令牌, 解析令牌
         String jwt = request.getHeader("token");
-        Integer operateUser = 0;
+        Integer userId = null;
+        String username = null;
         if (jwt != null) {
             Claims claims = JwtUtils.parseJWT(jwt);
-            operateUser = (Integer) claims.get("id");
+            Integer id = (Integer) claims.get("userId");
+            User user = userMapper.findById(id);
+            if (user != null) {
+                userId = user.getId();
+                username = user.getUsername();
+            }
         }
 
         //操作时间
@@ -65,7 +76,7 @@ public class LogAspect {
 
 
         //记录操作日志
-        OperateLog operateLog = new OperateLog(null,operateUser,null,operateTime,className,methodName,methodParams,returnValue,costTime);
+        OperateLog operateLog = new OperateLog(null,userId,username,operateTime,className,methodName,methodParams,returnValue,costTime);
         operateLogMapper.insert(operateLog);
 
         log.info("AOP记录操作日志: {}" , operateLog);

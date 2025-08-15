@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 public class OperateLog {
     private Integer id; //ID
     private Integer operateUser; //操作人ID
-    private String operateUserName; //操作人
+    private String operateUsername; //操作人
     private LocalDateTime operateTime; //操作时间
     private String className; //操作类名
     private String methodName; //操作方法名
