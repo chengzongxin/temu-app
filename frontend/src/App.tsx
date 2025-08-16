@@ -106,7 +106,7 @@ function AppLayout() {
           borderBottom: '1px solid #f0f0f0'
         }}>
           <div style={{ fontSize: 20, fontWeight: 'bold' }}>
-            TEMU 违规商品&图库管理平台
+            TEMU 违规商品管理平台
           </div>
           <UserMenu />
         </Header>

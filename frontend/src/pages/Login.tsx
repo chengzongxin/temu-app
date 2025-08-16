@@ -119,7 +119,7 @@ const Login: React.FC = () => {
           </Form.Item>
         </Form>
 
-        <div style={{ textAlign: 'center', marginTop: 16 }}>
+        {/* <div style={{ textAlign: 'center', marginTop: 16 }}>
           <Space direction="vertical" size="small">
             <Text type="secondary" style={{ fontSize: 12 }}>
               默认管理员账户：admin / admin123
@@ -128,7 +128,7 @@ const Login: React.FC = () => {
               首次使用请先初始化管理员账户
             </Text>
           </Space>
-        </div>
+        </div> */}
       </Card>
     </div>
   );
