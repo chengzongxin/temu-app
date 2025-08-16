@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.czx.mapper.UserRoleMapper">
+    
+    <!-- 获取所有角色 -->
+    <select id="getAllRoles" resultType="com.czx.pojo.UserRole">
+        SELECT id, role_name, role_code, description, created_at
+        FROM user_roles
+        ORDER BY id
+    </select>
+    
+    <!-- 根据角色代码获取角色 -->
+    <select id="getRoleByCode" resultType="com.czx.pojo.UserRole">
+        SELECT id, role_name, role_code, description, created_at
+        FROM user_roles
+        WHERE role_code = #{roleCode}
+    </select>
+    
+    <!-- 获取用户的所有角色 -->
+    <select id="getUserRoles" resultType="com.czx.pojo.UserRoleRelation">
+        SELECT urr.id, urr.user_id, urr.role_id, urr.created_at,
+               u.username, ur.role_name, ur.role_code
+        FROM user_role_relations urr
+        JOIN users u ON urr.user_id = u.id
+        JOIN user_roles ur ON urr.role_id = ur.id
+        WHERE urr.user_id = #{userId}
+        ORDER BY urr.created_at
+    </select>
+    
+    <!-- 检查用户是否有指定角色 -->
+    <select id="hasRole" resultType="boolean">
+        SELECT COUNT(*) > 0
+        FROM user_role_relations urr
+        JOIN user_roles ur ON urr.role_id = ur.id
+        WHERE urr.user_id = #{userId} AND ur.role_code = #{roleCode}
+    </select>
+    
+    <!-- 为用户分配角色 -->
+    <insert id="assignRole">
+        INSERT INTO user_role_relations (user_id, role_id)
+        VALUES (#{userId}, #{roleId})
+    </insert>
+    
+    <!-- 移除用户角色 -->
+    <delete id="removeRole">
+        DELETE FROM user_role_relations
+        WHERE user_id = #{userId} AND role_id = #{roleId}
+    </delete>
+    
+</mapper>

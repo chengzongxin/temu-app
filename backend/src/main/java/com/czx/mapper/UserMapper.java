@@ -3,6 +3,7 @@ package com.czx.mapper;
 import com.czx.pojo.User;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import java.util.List;
 
 @Mapper
 public interface UserMapper {
@@ -33,4 +34,10 @@ public interface UserMapper {
      * @return 影响行数
      */
     int update(User user);
+    
+    /**
+     * 获取所有用户
+     * @return 用户列表
+     */
+    List<User> findAll();
 }

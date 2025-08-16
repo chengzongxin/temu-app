@@ -48,8 +48,8 @@
 #### 步骤3: 检查 LocalStorage
 ```javascript
 // 在控制台执行
-localStorage.getItem('auth_token')
-localStorage.getItem('auth_user')
+localStorage.getItem('token')
+localStorage.getItem('user')
 ```
 
 #### 步骤4: 使用测试页面
@@ -91,8 +91,8 @@ await refreshAuth();
 #### 测试 LocalStorage 操作
 ```javascript
 // 手动设置认证信息
-localStorage.setItem('auth_token', 'your-token-here');
-localStorage.setItem('auth_user', JSON.stringify({username: 'test', id: 1}));
+localStorage.setItem('token', 'your-token-here');
+localStorage.setItem('user', JSON.stringify({username: 'test', id: 1}));
 
 // 刷新页面测试
 location.reload();

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.czx.mapper.ArticleImageMapper">
+    
+    <!-- 批量插入文章图片 -->
+    <insert id="batchInsertImages" parameterType="java.util.List">
+        INSERT INTO article_images (article_id, image_id, sort_order)
+        VALUES
+        <foreach collection="images" item="image" separator=",">
+            (#{image.articleId}, #{image.imageId}, #{image.sortOrder})
+        </foreach>
+    </insert>
+    
+    <!-- 根据文章ID获取图片 -->
+    <select id="getImagesByArticleId" resultType="com.czx.pojo.ArticleImage">
+        SELECT ai.*, 
+               fr.original_name,
+               CONCAT('/api/files/download?filePath=', fr.file_path) as download_url,
+               fr.file_size,
+               fr.file_type
+        FROM article_images ai
+        JOIN file_records fr ON ai.image_id = fr.id
+        WHERE ai.article_id = #{articleId}
+        ORDER BY ai.sort_order, ai.created_at
+    </select>
+    
+    <!-- 删除文章的所有图片 -->
+    <delete id="deleteImagesByArticleId">
+        DELETE FROM article_images WHERE article_id = #{articleId}
+    </delete>
+    
+    <!-- 删除单张图片 -->
+    <delete id="deleteImage">
+        DELETE FROM article_images WHERE id = #{id}
+    </delete>
+    
+</mapper>

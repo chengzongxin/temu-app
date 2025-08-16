@@ -20,7 +20,7 @@ const Login: React.FC = () => {
   // 如果已经登录，直接跳转
   useEffect(() => {
     if (isAuthenticated) {
-      const from = (location.state as any)?.from?.pathname || '/compliance';
+      const from = (location.state as any)?.from?.pathname || '/articles';
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, location]);
@@ -76,7 +76,7 @@ const Login: React.FC = () => {
       <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
           <Title level={2} style={{ color: '#1890ff', marginBottom: 8 }}>
-            TEMU工具箱
+            妙笔仁心
           </Title>
           <Text type="secondary">请登录您的账户</Text>
         </div>

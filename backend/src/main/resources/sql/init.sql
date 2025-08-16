@@ -41,3 +41,68 @@ CREATE TABLE IF NOT EXISTS file_records (
     uploaded_by VARCHAR(50) NOT NULL,
     upload_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- 新增：用户角色表
+CREATE TABLE IF NOT EXISTS user_roles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    role_name VARCHAR(50) NOT NULL COMMENT '角色名称',
+    role_code VARCHAR(50) UNIQUE NOT NULL COMMENT '角色代码',
+    description TEXT COMMENT '角色描述',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 插入基础角色
+INSERT INTO user_roles (role_name, role_code, description) VALUES
+('学生', 'STUDENT', '可以提交文章'),
+('审核员', 'REVIEWER', '可以审核文章'),
+('管理员', 'ADMIN', '系统管理员')
+ON DUPLICATE KEY UPDATE created_at = NOW();
+
+-- 新增：用户角色关联表
+CREATE TABLE IF NOT EXISTS user_role_relations (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    role_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES user_roles(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_user_role (user_id, role_id)
+);
+
+-- 为现有管理员用户分配管理员角色
+INSERT IGNORE INTO user_role_relations (user_id, role_id) 
+SELECT u.id, r.id FROM users u, user_roles r 
+WHERE u.username = 'admin' AND r.role_code = 'ADMIN';
+
+-- 新增：文章表
+CREATE TABLE IF NOT EXISTS articles (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL COMMENT '文章标题',
+    content TEXT NOT NULL COMMENT '文章内容（纯文本）',
+    author_id INT NOT NULL COMMENT '作者ID',
+    status INT DEFAULT 1 COMMENT '文章状态：1-已提交 2-审核中 3-已通过 4-已拒绝',
+    submitted_at TIMESTAMP NULL COMMENT '提交时间',
+    reviewed_at TIMESTAMP NULL COMMENT '审核时间',
+    reviewed_by INT NULL COMMENT '审核员ID',
+    review_comment TEXT COMMENT '审核意见',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewed_by) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_author_id (author_id),
+    INDEX idx_status (status),
+    INDEX idx_submitted_at (submitted_at)
+);
+
+-- 新增：文章图片关联表
+CREATE TABLE IF NOT EXISTS article_images (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    article_id INT NOT NULL COMMENT '文章ID',
+    image_id INT NOT NULL COMMENT '图片文件ID（关联file_records表）',
+    sort_order INT DEFAULT 0 COMMENT '图片排序',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+    FOREIGN KEY (image_id) REFERENCES file_records(id) ON DELETE CASCADE,
+    INDEX idx_article_id (article_id),
+    INDEX idx_sort_order (sort_order)
+);

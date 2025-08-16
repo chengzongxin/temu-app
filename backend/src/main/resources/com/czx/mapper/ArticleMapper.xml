@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.czx.mapper.ArticleMapper">
+    
+    <!-- 创建文章 -->
+    <insert id="createArticle" parameterType="com.czx.pojo.Article" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO articles (title, content, author_id, status, submitted_at)
+        VALUES (#{title}, #{content}, #{authorId}, #{status}, #{submittedAt})
+    </insert>
+    
+    <!-- 更新文章 -->
+    <update id="updateArticle" parameterType="com.czx.pojo.Article">
+        UPDATE articles
+        SET title = #{title}, content = #{content}, updated_at = NOW()
+        WHERE id = #{id} AND author_id = #{authorId}
+    </update>
+    
+    <!-- 根据ID获取文章 -->
+    <select id="getArticleById" resultType="com.czx.pojo.Article">
+        SELECT a.*, 
+               u1.username as authorName,
+               u2.username as reviewerName
+        FROM articles a
+        LEFT JOIN users u1 ON a.author_id = u1.id
+        LEFT JOIN users u2 ON a.reviewed_by = u2.id
+        WHERE a.id = #{id}
+    </select>
+    
+    <!-- 获取文章列表（分页） -->
+    <select id="getArticleList" resultType="com.czx.pojo.Article">
+        SELECT a.*, 
+               u1.username as authorName,
+               u2.username as reviewerName
+        FROM articles a
+        LEFT JOIN users u1 ON a.author_id = u1.id
+        LEFT JOIN users u2 ON a.reviewed_by = u2.id
+        <where>
+            <if test="status != null">
+                AND a.status = #{status}
+            </if>
+            <if test="authorId != null">
+                AND a.author_id = #{authorId}
+            </if>
+        </where>
+        ORDER BY a.created_at DESC
+        LIMIT #{pageSize} OFFSET #{page}
+    </select>
+    
+    <!-- 获取文章总数 -->
+    <select id="getArticleCount" resultType="int">
+        SELECT COUNT(*)
+        FROM articles a
+        <where>
+            <if test="status != null">
+                AND a.status = #{status}
+            </if>
+            <if test="authorId != null">
+                AND a.author_id = #{authorId}
+            </if>
+        </where>
+    </select>
+    
+    <!-- 删除文章 -->
+    <delete id="deleteArticle">
+        DELETE FROM articles WHERE id = #{id}
+    </delete>
+    
+    <!-- 更新文章状态 -->
+    <update id="updateArticleStatus">
+        UPDATE articles
+        SET status = #{status},
+            reviewed_at = NOW(),
+            reviewed_by = #{reviewedBy},
+            review_comment = #{reviewComment},
+            updated_at = NOW()
+        WHERE id = #{id}
+    </update>
+    
+</mapper>

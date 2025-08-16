@@ -40,8 +40,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const savedToken = localStorage.getItem('auth_token');
-        const savedUser = localStorage.getItem('auth_user');
+        const savedToken = localStorage.getItem('token');
+        const savedUser = localStorage.getItem('user');
         
         if (savedToken && savedUser) {
           // 先设置token，避免重复验证
@@ -61,7 +61,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               if (responseData.code === 1 && responseData.data) {
                 // token有效，设置用户信息
                 setUser(responseData.data);
-                localStorage.setItem('auth_user', JSON.stringify(responseData.data));
+                localStorage.setItem('user', JSON.stringify(responseData.data));
               } else {
                 // token无效，清除存储的信息
                 throw new Error('Token validation failed');
@@ -73,8 +73,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           } catch (error) {
             console.error('Token validation failed:', error);
             // 清除无效的认证信息
-            localStorage.removeItem('auth_token');
-            localStorage.removeItem('auth_user');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
             setToken(null);
             setUser(null);
           }
@@ -82,8 +82,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error('Auth initialization failed:', error);
         // 确保清除所有认证信息
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('auth_user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
         setToken(null);
         setUser(null);
       } finally {
@@ -115,7 +115,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (data.code === 1 && data.data) {
         // 设置token
         setToken(data.data);
-        localStorage.setItem('auth_token', data.data);
+        localStorage.setItem('token', data.data);
         
         // 设置临时用户信息
         const tempUser = { 
@@ -139,7 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             const userResponseData = await userResponse.json();
             if (userResponseData.code === 1 && userResponseData.data) {
               setUser(userResponseData.data);
-              localStorage.setItem('auth_user', JSON.stringify(userResponseData.data));
+              localStorage.setItem('user', JSON.stringify(userResponseData.data));
             }
           }
         } catch (error) {
@@ -160,8 +160,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     setUser(null);
     setToken(null);
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('auth_user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   };
 
   const value: AuthContextType = {
