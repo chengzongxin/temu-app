@@ -418,7 +418,7 @@ export DB_URL=jdbc:mysql://106.12.214.144:3306/temu_app
 
 ## 测试登录
 ```bash
-curl -X POST http://106.12.214.144:8000/api/auth/login -H "Content-Type: application/json"  -d '{"username": "admin","password": "1122"}'
+curl -X POST http://106.12.214.144:9000/api/auth/login -H "Content-Type: application/json"  -d '{"username": "admin","password": "1122"}'
 ```
 
 
@@ -427,8 +427,43 @@ curl -X POST http://106.12.214.144:8000/api/auth/login -H "Content-Type: applica
 scp target/core-service-0.0.1-SNAPSHOT.jar root@106.12.214.144:/home/core-service.jar
 ls -lh /home/core-service.jar
 nohup java -jar myapp.jar > backend.log 2>&1 &
-nohup java -jar core-service.jar \
+nohup java -jar core-service-0.0.1-SNAPSHOT.jar \
   --spring.datasource.url=jdbc:mysql://106.12.214.144:3306/temu_app \
   --spring.datasource.username=root \
   --spring.datasource.password=123456789 backend.log 2>&1 &
+```
+
+
+```
+/var/www/html_temu
+```
+
+/etc/nginx/sites-available
+```
+server {
+        listen 8889 default_server;
+        listen [::]:8889 default_server;
+
+        root /var/www/html_temu;
+
+        index index.html index.htm index.nginx-debian.html;
+
+        server_name _;
+
+        location / {
+                try_files $uri /index.html;
+        }
+
+        location /api/ {
+        proxy_pass http://127.0.0.1:8888/api/;  # Spring Boot 后端
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
+```
+
+```
+lsof -i :8888
+
+ps -ef | grep java | grep -v grep
 ```

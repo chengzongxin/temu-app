@@ -10,7 +10,7 @@ spring:
       max-request-size: 11GB
 
 server:
-  port: 8000
+  port: 8888
 
 mybatis:
   configuration:
