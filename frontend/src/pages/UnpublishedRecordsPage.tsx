@@ -26,26 +26,23 @@ const UnpublishedRecordsPage: React.FC = () => {
   // 复制SKC ID列表
   const copySkcIds = (category: CategoryRecord) => {
     const skcIds = category.skcRecords.map(record => record.skcId).join('\n');
-    navigator.clipboard.writeText(skcIds).then(() => {
-      notify({
-        type: 'success',
-        message: '复制成功',
-        description: `已复制类目"${category.catName}"的 ${category.skcRecords.length} 个SKC ID到剪贴板`
+    
+    // 优先使用现代 Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(skcIds).then(() => {
+        notify({
+          type: 'success',
+          message: '复制成功',
+          description: `已复制类目"${category.catName}"的 ${category.skcRecords.length} 个SKC ID到剪贴板`
+        });
+      }).catch((error) => {
+        console.warn('Clipboard API 失败，使用降级方案:', error);
+        fallbackCopy(skcIds, category.catName, category.skcRecords.length);
       });
-    }).catch(() => {
+    } else {
       // 降级方案
-      const textArea = document.createElement('textarea');
-      textArea.value = skcIds;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      notify({
-        type: 'success',
-        message: '复制成功',
-        description: `已复制类目"${category.catName}"的 ${category.skcRecords.length} 个SKC ID到剪贴板`
-      });
-    });
+      fallbackCopy(skcIds, category.catName, category.skcRecords.length);
+    }
   };
 
   // 复制所有SKC ID
@@ -63,26 +60,94 @@ const UnpublishedRecordsPage: React.FC = () => {
       .flatMap(category => category.skcRecords.map(record => record.skcId))
       .join('\n');
     
-    navigator.clipboard.writeText(allSkcIds).then(() => {
-      notify({
-        type: 'success',
-        message: '复制成功',
-        description: `已复制所有 ${data.globalStats.totalSkcCount} 个SKC ID到剪贴板`
+    // 优先使用现代 Clipboard API
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(allSkcIds).then(() => {
+        notify({
+          type: 'success',
+          message: '复制成功',
+          description: `已复制所有 ${data.globalStats.totalSkcCount} 个SKC ID到剪贴板`
+        });
+      }).catch((error) => {
+        console.warn('Clipboard API 失败，使用降级方案:', error);
+        fallbackCopy(allSkcIds, '所有类目', data.globalStats.totalSkcCount);
       });
-    }).catch(() => {
+    } else {
       // 降级方案
+      fallbackCopy(allSkcIds, '所有类目', data.globalStats.totalSkcCount);
+    }
+  };
+
+  // 降级复制方案
+  const fallbackCopy = (text: string, categoryName: string, count: number) => {
+    try {
       const textArea = document.createElement('textarea');
-      textArea.value = allSkcIds;
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
       document.body.appendChild(textArea);
+      textArea.focus();
       textArea.select();
-      document.execCommand('copy');
+      
+      const successful = document.execCommand('copy');
       document.body.removeChild(textArea);
+      
+      if (successful) {
+        notify({
+          type: 'success',
+          message: '复制成功',
+          description: `已复制${categoryName}的 ${count} 个SKC ID到剪贴板`
+        });
+      } else {
+        throw new Error('execCommand copy failed');
+      }
+    } catch (error) {
+      console.error('降级复制方案也失败了:', error);
       notify({
-        type: 'success',
-        message: '复制成功',
-        description: `已复制所有 ${data.globalStats.totalSkcCount} 个SKC ID到剪贴板`
+        type: 'error',
+        message: '复制失败',
+        description: '无法复制到剪贴板，请手动选择文本复制'
       });
-    });
+      
+      // 最后的方案：显示文本让用户手动复制
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '50%';
+      textArea.style.top = '50%';
+      textArea.style.transform = 'translate(-50%, -50%)';
+      textArea.style.width = '80%';
+      textArea.style.height = '200px';
+      textArea.style.zIndex = '9999';
+      textArea.style.border = '2px solid #1890ff';
+      textArea.style.borderRadius = '8px';
+      textArea.style.padding = '12px';
+      textArea.style.fontSize = '14px';
+      textArea.style.fontFamily = 'monospace';
+      
+      const closeButton = document.createElement('button');
+      closeButton.textContent = '关闭';
+      closeButton.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 4px 8px;
+        background: #1890ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      `;
+      closeButton.onclick = () => {
+        document.body.removeChild(textArea);
+      };
+      
+      textArea.appendChild(closeButton);
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+    }
   };
 
 
@@ -111,28 +176,135 @@ const UnpublishedRecordsPage: React.FC = () => {
       // 转换为CSV字符串
       const csvContent = csvData.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
       
-      // 创建下载链接
-      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `未发布SKC记录_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // 尝试使用现代下载方式
+      try {
+        // 方法1: 使用 Blob 和 createObjectURL (推荐)
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        
+        // 检查是否支持 Blob 下载
+        if (window.URL && typeof window.URL.createObjectURL === 'function') {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `未发布SKC记录_${new Date().toISOString().split('T')[0]}.csv`;
+          link.style.display = 'none';
+          
+          // 添加到DOM并触发下载
+          document.body.appendChild(link);
+          link.click();
+          
+          // 清理
+          setTimeout(() => {
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+          }, 100);
+          
+          notify({
+            type: 'success',
+            message: '导出成功',
+            description: `已导出 ${data.globalStats.totalSkcCount} 条SKC记录到CSV文件`
+          });
+          return;
+        }
+      } catch (blobError) {
+        console.warn('Blob下载失败，尝试其他方式:', blobError);
+      }
+      
+      // 方法2: 降级到数据URI方式
+      try {
+        const csvString = 'data:text/csv;charset=utf-8,\ufeff' + encodeURIComponent(csvContent);
+        const link = document.createElement('a');
+        link.href = csvString;
+        link.download = `未发布SKC记录_${new Date().toISOString().split('T')[0]}.csv`;
+        link.style.display = 'none';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        notify({
+          type: 'success',
+          message: '导出成功',
+          description: `已导出 ${data.globalStats.totalSkcCount} 条SKC记录到CSV文件`
+        });
+        return;
+      } catch (dataUriError) {
+        console.warn('数据URI下载失败，尝试最后方案:', dataUriError);
+      }
+      
+      // 方法3: 最后的降级方案 - 显示文本让用户手动复制
+      const textArea = document.createElement('textarea');
+      textArea.value = csvContent;
+      textArea.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;
+        height: 60%;
+        z-index: 9999;
+        border: 2px solid #1890ff;
+        border-radius: 8px;
+        padding: 16px;
+        font-size: 12px;
+        font-family: monospace;
+        background: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      `;
+      
+      const header = document.createElement('div');
+      header.style.cssText = `
+        margin-bottom: 16px;
+        padding: 8px;
+        background: #f0f8ff;
+        border-radius: 4px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #1890ff;
+      `;
+      header.innerHTML = `
+        <div>CSV数据已生成，请手动复制以下内容并保存为 .csv 文件</div>
+        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+          文件名: 未发布SKC记录_${new Date().toISOString().split('T')[0]}.csv
+        </div>
+      `;
+      
+      const closeButton = document.createElement('button');
+      closeButton.textContent = '关闭';
+      closeButton.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        padding: 6px 12px;
+        background: #1890ff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+      `;
+      closeButton.onclick = () => {
+        document.body.removeChild(textArea);
+      };
+      
+      textArea.appendChild(header);
+      textArea.appendChild(closeButton);
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
       
       notify({
-        type: 'success',
-        message: '导出成功',
-        description: `已导出 ${data.globalStats.totalSkcCount} 条SKC记录到Excel文件`
+        type: 'info',
+        message: '导出方式已切换',
+        description: '由于浏览器限制，已显示CSV内容供手动复制'
       });
+      
     } catch (error) {
       console.error('导出失败:', error);
       notify({
         type: 'error',
         message: '导出失败',
-        description: '导出过程中发生错误，请重试'
+        description: '导出过程中发生错误，请重试或联系管理员'
       });
     }
   };
@@ -375,8 +547,37 @@ const UnpublishedRecordsPage: React.FC = () => {
                         type="text" 
                         icon={<CopyOutlined />} 
                         onClick={() => {
-                          navigator.clipboard.writeText(text);
-                          message.success('已复制SKC ID');
+                          if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(text).then(() => {
+                              message.success('已复制SKC ID');
+                            }).catch(() => {
+                              // 降级方案
+                              const textArea = document.createElement('textarea');
+                              textArea.value = text;
+                              textArea.style.position = 'fixed';
+                              textArea.style.left = '-999999px';
+                              textArea.style.top = '-999999px';
+                              document.body.appendChild(textArea);
+                              textArea.focus();
+                              textArea.select();
+                              document.execCommand('copy');
+                              document.body.removeChild(textArea);
+                              message.success('已复制SKC ID');
+                            });
+                          } else {
+                            // 降级方案
+                            const textArea = document.createElement('textarea');
+                            textArea.value = text;
+                            textArea.style.position = 'fixed';
+                            textArea.style.left = '-999999px';
+                            textArea.style.top = '-999999px';
+                            document.body.appendChild(textArea);
+                            textArea.focus();
+                            textArea.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(textArea);
+                            message.success('已复制SKC ID');
+                          }
                         }}
                         style={{ padding: '2px 4px' }}
                       />
