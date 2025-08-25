@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig(({ mode }) => {
   // 根据环境选择不同的 API 地址
   const apiTarget = mode === 'development' 
-    ? 'http://localhost:9000'  // 本地开发
+    ? 'http://localhost:8888'  // 本地开发
     : 'http://localhost:8082'; // Docker 环境（通过 nginx-proxy）
 
   return {

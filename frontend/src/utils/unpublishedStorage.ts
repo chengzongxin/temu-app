@@ -1,12 +1,17 @@
 import type { UnpublishedStorageData, CategoryRecord } from '../types/unpublished';
 
-const STORAGE_KEY = 'temu_unpublished_skc_records';
+const STORAGE_KEY_PREFIX = 'temu_unpublished_skc_records';
 const STORAGE_VERSION = '1.0';
 
 class UnpublishedStorageService {
-  getData(): UnpublishedStorageData {
+  private getStorageKey(userId: string): string {
+    return `${STORAGE_KEY_PREFIX}_${userId}`;
+  }
+
+  getData(userId: string): UnpublishedStorageData {
     try {
-      const data = localStorage.getItem(STORAGE_KEY);
+      const storageKey = this.getStorageKey(userId);
+      const data = localStorage.getItem(storageKey);
       if (!data) return this.getDefaultData();
       
       const parsed = JSON.parse(data);
@@ -20,10 +25,11 @@ class UnpublishedStorageService {
     }
   }
 
-  saveData(data: UnpublishedStorageData): boolean {
+  saveData(userId: string, data: UnpublishedStorageData): boolean {
     try {
+      const storageKey = this.getStorageKey(userId);
       data.globalStats.lastUpdated = new Date().toISOString();
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      localStorage.setItem(storageKey, JSON.stringify(data));
       return true;
     } catch (error) {
       console.error('保存数据失败:', error);
@@ -31,7 +37,7 @@ class UnpublishedStorageService {
     }
   }
 
-  addSkcRecords(records: Array<{
+  addSkcRecords(userId: string, records: Array<{
     skcId: string;
     productId: string;
     productName: string;
@@ -39,7 +45,7 @@ class UnpublishedStorageService {
     category: { catId: number; catName: string };
     source: string;
   }>): boolean {
-    const data = this.getData();
+    const data = this.getData(userId);
     const now = new Date().toISOString();
     
     records.forEach(record => {
@@ -86,29 +92,52 @@ class UnpublishedStorageService {
       data.globalStats.collectHistory = data.globalStats.collectHistory.slice(0, 100);
     }
 
-    return this.saveData(data);
+    return this.saveData(userId, data);
   }
 
-  deleteCategory(catId: number): boolean {
-    const data = this.getData();
+  deleteCategory(userId: string, catId: number): boolean {
+    const data = this.getData(userId);
     const catKey = catId.toString();
     
     if (data.categories[catKey]) {
       delete data.categories[catKey];
       this.updateGlobalStats(data);
-      return this.saveData(data);
+      return this.saveData(userId, data);
     }
     return false;
   }
 
-  clearAllData(): boolean {
+  clearAllData(userId: string): boolean {
     try {
-      localStorage.removeItem(STORAGE_KEY);
+      const storageKey = this.getStorageKey(userId);
+      localStorage.removeItem(storageKey);
       return true;
     } catch (error) {
       console.error('清空数据失败:', error);
       return false;
     }
+  }
+
+  // 获取所有用户的存储键（用于管理或调试）
+  getAllUserStorageKeys(): string[] {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(STORAGE_KEY_PREFIX)) {
+        keys.push(key);
+      }
+    }
+    return keys;
+  }
+
+  // 清理指定用户之外的所有数据（用于用户注销时清理其他用户数据）
+  clearOtherUsersData(currentUserId: string): void {
+    const allKeys = this.getAllUserStorageKeys();
+    allKeys.forEach(key => {
+      if (key !== this.getStorageKey(currentUserId)) {
+        localStorage.removeItem(key);
+      }
+    });
   }
 
   private getDefaultData(): UnpublishedStorageData {
