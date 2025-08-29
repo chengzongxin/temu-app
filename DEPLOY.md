@@ -466,4 +466,14 @@ server {
 lsof -i :8888
 
 ps -ef | grep java | grep -v grep
+
+
+nohup java -jar core-service-0.0.1-SNAPSHOT.jar   --spring.datasource.url=jdbc:mysql://106.12.214.144:3306/temu_app   --spring.datasource.username=root   --spring.datasource.password=123456789 backend.log 2>&1 &
+nohup java -jar core-service-0.0.1-SNAPSHOT.jar   --spring.datasource.url=jdbc:mysql://106.12.214.144:3306/temu_app   --spring.datasource.username=root   --spring.datasource.password=jsdoctorTATAKAI2025 backend.log 2>&1 &
+
+
+nohup java -jar jsdoctor-server-0.0.1-SNAPSHOT.jar   --spring.datasource.url=jdbc:mysql://106.12.214.144:3306/jsdoctor   --spring.datasource.username=root   --spring.datasource.password=jsdoctorTATAKAI2025 backend.log 2>&1 &
 ```
+
+
+

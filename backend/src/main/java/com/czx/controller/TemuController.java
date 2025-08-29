@@ -129,4 +129,31 @@ public class TemuController {
             return Result.error("批量下架失败: " + e.getMessage());
         }
     }
+    
+    /**
+     * 获取违规描述选项列表
+     * @param request HTTP请求
+     * @return 违规描述选项列表
+     */
+    @GetMapping("/compliance/violation-types")
+    public Result getViolationTypes(HttpServletRequest request) {
+        // 检查用户是否已认证
+        if (!RequestUtils.isAuthenticated(request)) {
+            return Result.error("用户未认证");
+        }
+        
+        // 获取用户ID
+        Integer userId = RequestUtils.getUserId(request);
+        if (userId == null) {
+            return Result.error("无法获取用户信息");
+        }
+        
+        try {
+            // 调用Service层获取违规描述选项
+            var violationTypes = temuService.getViolationTypes(userId);
+            return Result.success(violationTypes);
+        } catch (Exception e) {
+            return Result.error("获取违规描述选项失败: " + e.getMessage());
+        }
+    }
 }

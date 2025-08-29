@@ -7,6 +7,9 @@ interface Product {
   goods_img_url?: string;
   site_num: number;
   punish_detail_list: any[];
+  processed_status?: number;
+  violation_desc: string;
+  violation_type: number;
 }
 
 // Context 状态类型
@@ -35,7 +38,7 @@ export const useProductListContext = () => {
 export const ProductListProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useState(100);
   const [total, setTotal] = useState(0);
 
   return (
@@ -45,4 +48,4 @@ export const ProductListProvider: React.FC<{ children: React.ReactNode }> = ({ c
       {children}
     </ProductListContext.Provider>
   );
-}; 
+};

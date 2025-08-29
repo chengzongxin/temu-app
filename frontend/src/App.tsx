@@ -89,7 +89,28 @@ const UserMenu: React.FC = () => {
 function AppLayout() {
   const location = useLocation();
   const selectedKey = menuItems.find(item => location.pathname.startsWith(`/${item.key}`))?.key || 'compliance';
+  const isLoginPage = location.pathname === '/login';
   
+  // 如果是登录页面，直接全屏显示登录组件
+  if (isLoginPage) {
+    return (
+      <Layout style={{ minHeight: '100vh', width: '100vw' }}>
+        <Content style={{
+          margin: '0',
+          background: '#fff',
+          height: '100vh',
+          width: '100vw',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <Login />
+        </Content>
+      </Layout>
+    );
+  }
+  
+  // 非登录页面显示正常布局
   return (
     <Layout style={{ minHeight: '100vh', width: '100vw' }}>
       <Sider width={200} style={{ background: '#fff', overflow: 'hidden' }}>
@@ -119,7 +140,6 @@ function AppLayout() {
           flex: 1,
         }}>
           <Routes>
-            <Route path="/login" element={<Login />} />
             <Route path="/test" element={<TestPage />} />
             <Route path="/config" element={
               <ProtectedRoute>

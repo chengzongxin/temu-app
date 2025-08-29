@@ -1,6 +1,9 @@
 package com.czx.service.impl;
 
+import com.czx.mapper.ViolationTypeMapper;
 import com.czx.pojo.UserConfig;
+import com.czx.pojo.ViolationType;
+import com.czx.service.ComplianceStatusService;
 import com.czx.service.TemuService;
 import com.czx.service.UserConfigService;
 import com.czx.utils.NetworkRequest;
@@ -9,6 +12,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +23,8 @@ import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +32,10 @@ import org.slf4j.LoggerFactory;
 public class TemuServiceImpl implements TemuService {
     
     private static final Logger log = LoggerFactory.getLogger(TemuServiceImpl.class);
+    
+    // 注入ViolationTypeMapper
+    @Autowired
+    private ViolationTypeMapper violationTypeMapper;
     
     @Autowired
     private UserConfigService userConfigService;
@@ -35,6 +45,41 @@ public class TemuServiceImpl implements TemuService {
     
     @Autowired
     private ObjectMapper objectMapper;
+    
+    @Autowired
+    private ComplianceStatusService complianceStatusService;
+    
+    /**
+     * 获取违规描述选项列表
+     * @param userId 用户ID
+     * @return 违规描述选项列表
+     */
+    @Override
+    public List<Map<String, Object>> getViolationTypes(Integer userId) {
+        log.info("获取违规描述选项列表，用户ID: {}", userId);
+        
+        // 从数据库获取违规类型列表
+        List<ViolationType> violationTypes = violationTypeMapper.findAll();
+        
+        // 转换为前端需要的格式
+        List<Map<String, Object>> result = new ArrayList<>();
+        
+        // 添加"全部类型"选项
+        Map<String, Object> allTypeOption = new HashMap<>();
+        allTypeOption.put("label", "全部类型");
+        allTypeOption.put("value", "");  // 使用空字符串代替null
+        result.add(allTypeOption);
+        
+        // 添加从数据库获取的违规类型
+        for (ViolationType type : violationTypes) {
+            Map<String, Object> option = new HashMap<>();
+            option.put("label", type.getDescription());
+            option.put("value", type.getDescription());
+            result.add(option);
+        }
+        
+        return result;
+    }
     
     @Override
     public Map<String, Object> getComplianceList(Integer userId, int page, int pageSize) {
@@ -66,10 +111,34 @@ public class TemuServiceImpl implements TemuService {
             if (success != null && success) {
                 JsonNode resultNode = JsonUtils.getNode(jsonNode, "result");
                 if (resultNode != null) {
+                    // 获取商品列表
                     JsonNode itemsNode = JsonUtils.getNode(resultNode, "punish_appeal_entrance_list");
-                    if (itemsNode != null) {
+                    if (itemsNode != null && itemsNode.isArray()) {
+                        // 提取所有商品ID
+                        List<Long> productIds = new ArrayList<>();
+                        for (JsonNode item : itemsNode) {
+                            Long spuId = JsonUtils.getLong(item, "spu_id");
+                            if (spuId != null) {
+                                productIds.add(spuId);
+                            }
+                        }
+                        
+                        // 获取这些商品的处理状态
+                        Map<Long, Integer> statusMap = complianceStatusService.getStatusByProductIds(userId, productIds);
+                        
+                        // 将处理状态添加到商品数据中
+                        for (JsonNode item : itemsNode) {
+                            Long spuId = JsonUtils.getLong(item, "spu_id");
+                            if (spuId != null) {
+                                // 使用ObjectNode可以修改JsonNode
+                                ((ObjectNode) item).put("processed_status", statusMap.getOrDefault(spuId, 0));
+                            }
+                        }
+                    }
+                    JsonNode punishAppealList = JsonUtils.getNode(resultNode, "punish_appeal_entrance_list");
+                    if (punishAppealList != null) {
                         Map<String, Object> result = new HashMap<>();
-                        result.put("items", itemsNode);
+                        result.put("items", punishAppealList);
                         result.put("success", true);
                         return result;
                     }
@@ -628,5 +697,11 @@ public class TemuServiceImpl implements TemuService {
         }
         
         return result;
+    }
+    
+    // markProductStatus方法实现
+    @Override
+    public boolean markProductStatus(Integer userId, Long productId, Integer status) {
+        return complianceStatusService.updateStatus(userId, productId, status);
     }
 }

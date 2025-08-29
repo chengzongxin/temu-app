@@ -41,4 +41,20 @@ public interface TemuService {
      * @return 下架结果数据
      */
     Map<String, Object> offlineProducts(Integer userId, List<Long> productIds, int maxThreads);
+    
+    /**
+     * 标记商品处理状态
+     * @param userId 用户ID
+     * @param productId 商品ID
+     * @param status 状态（0-未处理，1-已处理）
+     * @return 处理结果
+     */
+    boolean markProductStatus(Integer userId, Long productId, Integer status);
+    
+    /**
+     * 获取违规描述选项列表
+     * @param userId 用户ID
+     * @return 违规描述选项列表
+     */
+    List<Map<String, Object>> getViolationTypes(Integer userId);
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Card, Table, Button, message, Image, Switch, Drawer, Select, InputNumber, Space } from "antd";
+import { Card, Table, Button, message, Image, Switch, Drawer, Select, InputNumber, Space, Tag } from "antd";
 import { useNavigate } from "react-router-dom";
 import { useProductListContext } from './ProductListContext';
 import ProductDetail from './ProductDetail';
@@ -20,9 +20,53 @@ const ProductList: React.FC = () => {
   const [customMin, setCustomMin] = useState<number>(80); // 自定义最小值
   const [customMax, setCustomMax] = useState<number>(999); // 自定义最大值
   const [showUSViolation, setShowUSViolation] = useState<boolean>(false); // 美国站违规筛选
+  const [violationDesc, setViolationDesc] = useState<string | null>(null); // 违规描述筛选
   const notify = useGlobalNotification();
   const { user, token, isAuthenticated } = useAuth();
-  
+
+  // 违规描述选项状态
+  const [violationDescOptions, setViolationDescOptions] = useState<Array<{ label: string, value: string | null }>>([
+    { label: "全部类型", value: "" },
+    { label: "加载中...", value: "loading" }
+  ]);
+
+  // 获取违规描述选项列表
+  const fetchViolationDescOptions = async () => {
+    try {
+      const res = await fetch(`/api/temu/compliance/violation-types`, {
+        headers: {
+          "token": `${token}`
+        }
+      });
+      const data = await res.json();
+      if (data.code === 1 && Array.isArray(data.data)) {
+        // 转换后端数据为Select组件需要的格式
+        const options = [
+          ...data.data
+        ];
+        setViolationDescOptions(options);
+      } else {
+        console.error("获取违规描述选项失败:", data.msg);
+        // 使用默认选项
+        setViolationDescOptions([
+          { label: "全部类型", value: "" },
+          { label: "疑似版权侵权", value: "疑似版权侵权" },
+          { label: "使用了未经授权的商标", value: "使用了未经授权的商标" },
+          { label: "商品信息存在成人类信息的内容", value: "商品信息存在成人类信息的内容" }
+        ]);
+      }
+    } catch (error) {
+      console.error("获取违规描述选项出错:", error);
+      // 使用默认选项
+      setViolationDescOptions([
+        { label: "全部类型", value: "" },
+        { label: "疑似版权侵权", value: "疑似版权侵权" },
+        { label: "使用了未经授权的商标", value: "使用了未经授权的商标" },
+        { label: "商品信息存在成人类信息的内容", value: "商品信息存在成人类信息的内容" }
+      ]);
+    }
+  };
+
   // 获取违规商品列表
   const fetchProducts = async (pageNum = page, size = pageSize) => {
     setLoading(true);
@@ -54,12 +98,15 @@ const ProductList: React.FC = () => {
     }
   };
 
-  // 首次挂载时自动加载一次数据
+  // 首次挂载时自动加载一次数据和违规描述选项
   useEffect(() => {
     if (products.length === 0) {
       fetchProducts(page, pageSize);
       fetchTotal(page, pageSize);
     }
+
+    // 获取违规描述选项
+    fetchViolationDescOptions();
     // eslint-disable-next-line
   }, []);
 
@@ -70,13 +117,13 @@ const ProductList: React.FC = () => {
       return;
     }
     setLoading(true);
-    
+
     try {
       // 第一步：获取选中商品的详情，获取所有对应的skcId
       message.loading("正在获取商品详情...", 0);
       const productRes = await fetch("/api/temu/seller/product", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "token": `${token}`
         },
@@ -84,7 +131,7 @@ const ProductList: React.FC = () => {
       });
       const productData = await productRes.json();
       message.destroy(); // 清除loading消息
-      
+
       if (productData.code === 1) {
         // 提取所有skcId
         const allSkcIds: string[] = [];
@@ -105,7 +152,7 @@ const ProductList: React.FC = () => {
         message.loading(`正在下架 ${allSkcIds.length} 个SKC...`, 0);
         const res = await fetch("/api/temu/seller/offline", {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
             "token": `${token}`
           },
@@ -122,7 +169,7 @@ const ProductList: React.FC = () => {
           const successCount = data.summary?.success || 0;
           const failCount = data.summary?.failed || 0;
           const totalCount = data.summary?.total || 0;
-          
+
           notify({
             type: 'info',
             message: "批量下架完成",
@@ -145,7 +192,7 @@ const ProductList: React.FC = () => {
               </div>
             ) as any,
           });
-          
+
           // 刷新列表并清空选择
           fetchProducts(page, pageSize);
           setSelectedRowKeys([]);
@@ -180,6 +227,13 @@ const ProductList: React.FC = () => {
       if (!hasUSViolation) return false;
     }
 
+    // 违规描述筛选
+    if (violationDesc !== null && violationDesc !== "") {
+      if (!record.violation_desc || !record.violation_desc.includes(violationDesc)) {
+        return false;
+      }
+    }
+
     // 违规站点数量筛选
     if (showMajorViolation) {
       const isAllSite = record.site_num === 1 &&
@@ -205,54 +259,105 @@ const ProductList: React.FC = () => {
     return true;
   });
 
-  // 打开详情抽屉
-  const openDetail = (record: any) => {
+  // 打开详情抽屉并自动标记为已处理
+  const openDetail = async (record: any) => {
     setCurrentProduct(record);
     setDrawerVisible(true);
     setViewedIds(prev => prev.includes(record.spu_id) ? prev : [...prev, record.spu_id]);
+
+    // 如果未处理，自动标记为已处理
+    if (record.processed_status !== 1) {
+      try {
+        const res = await fetch(`/api/temu/compliance/status`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "token": `${token}`
+          },
+          body: JSON.stringify({
+            productId: record.spu_id,
+            status: 1
+          })
+        });
+        const data = await res.json();
+        if (data.code === 1) {
+          // 更新本地数据状态
+          setProducts(products.map(item =>
+            item.spu_id === record.spu_id ? { ...item, processed_status: 1 } : item
+          ));
+        }
+      } catch (error) {
+        console.error("标记处理状态失败:", error);
+      }
+    }
   };
 
-  return (
-    <Card title="违规商品列表"
-              extra={
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <div>
-            <Button type="primary" onClick={() => {
-              fetchProducts(page, pageSize);
-              fetchTotal(page, pageSize);
-            }} loading={loading}>
-              刷新
-            </Button>
-            <Button 
-              type="primary" 
-              danger 
-              onClick={handleOffline}
-              disabled={selectedRowKeys.length === 0}
-              loading={loading}
-              style={{ marginLeft: 8 }}
+  const renderExtra = () => {
+    return (
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 16,
+          padding: '8px 12px',
+          background: '#f5f5f5',
+          borderRadius: 8,
+          alignItems: 'center'
+        }}>
+          {/* 违规描述筛选 */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <span style={{ marginRight: 8, fontWeight: 'bold' }}>违规描述:</span>
+            <Select
+              value={violationDesc}
+              onChange={setViolationDesc}
+              style={{ width: 280 }}
+              placeholder="选择违规描述"
+              showSearch
+              optionFilterProp="label"
             >
-              批量下架 ({selectedRowKeys.length})
-            </Button>
+              {violationDescOptions.map((option) => (
+                <Select.Option key={option.value || ""} value={option.value || ""}>
+                  {option.label}
+                </Select.Option>
+              ))}
+            </Select>
           </div>
-          <Space>
-            <Switch checked={showUSViolation} onChange={setShowUSViolation} />
+
+          {/* 美国站违规筛选 */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Switch
+              checked={showUSViolation}
+              onChange={setShowUSViolation}
+              size="small"
+            />
             <span style={{ marginLeft: 8 }}>
               美国站违规
             </span>
-            <Switch checked={showMajorViolation} onChange={setShowMajorViolation} />
-            <span style={{ marginLeft: 8 }}>
-              违规筛选
+          </div>
+
+          {/* 站点数量筛选 */}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Switch
+              checked={showMajorViolation}
+              onChange={setShowMajorViolation}
+              size="small"
+            />
+            <span style={{ marginLeft: 8, marginRight: 8 }}>
+              站点筛选
             </span>
+
             {showMajorViolation && (
               <Space>
                 <Select
                   value={filterRange}
                   onChange={setFilterRange}
-                  style={{ width: 120 }}
+                  style={{ width: 150 }}
                   options={[
                     { label: "80站以上(含全站)", value: "80+" },
                     { label: "自定义范围", value: "custom" }
                   ]}
+                  size="middle"
                 />
                 {filterRange === "custom" && (
                   <Space>
@@ -262,7 +367,8 @@ const ProductList: React.FC = () => {
                       value={customMin}
                       onChange={(value) => setCustomMin(value || 0)}
                       placeholder="最小值"
-                      style={{ width: 100 }}
+                      style={{ width: 80 }}
+                      size="middle"
                     />
                     <span>-</span>
                     <InputNumber
@@ -271,15 +377,42 @@ const ProductList: React.FC = () => {
                       value={customMax}
                       onChange={(value) => setCustomMax(value || 999)}
                       placeholder="最大值"
-                      style={{ width: 100 }}
+                      style={{ width: 80 }}
+                      size="middle"
                     />
                   </Space>
                 )}
               </Space>
             )}
-          </Space>
+          </div>
         </div>
-      }
+
+        {/* 添加按钮 */}
+        <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 16 }}> 
+          <Button type="primary" onClick={() => {
+            fetchProducts(page, pageSize);
+            fetchTotal(page, pageSize);
+          }} loading={loading}>
+            刷新
+          </Button>
+          <Button
+            type="primary"
+            danger
+            onClick={handleOffline}
+            disabled={selectedRowKeys.length === 0}
+            loading={loading}
+            style={{ marginLeft: 8 }}
+          >
+            批量下架 ({selectedRowKeys.length})
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <Card title=""
+      extra={renderExtra()}
       style={{ height: 'calc(100vh - 64px - 48px)' }}
     >
       <Table
@@ -295,9 +428,9 @@ const ProductList: React.FC = () => {
             title: "违规描述",
             dataIndex: "violation_desc",
             width: 150,
-            render: (desc: string) => (
-              <div style={{ 
-                maxWidth: 150, 
+            render: (desc: string | undefined) => (
+              <div style={{
+                maxWidth: 150,
                 wordBreak: 'break-word',
                 lineHeight: '1.4',
                 fontSize: '13px'
@@ -306,11 +439,11 @@ const ProductList: React.FC = () => {
               </div>
             )
           },
-          { 
-            title: "图片", 
-            dataIndex: "goods_img_url", 
+          {
+            title: "图片",
+            dataIndex: "goods_img_url",
             width: 160,
-            render: (url: string) => url ? <Image width={120} src={url} /> : null 
+            render: (url: string) => url ? <Image width={120} src={url} /> : null
           },
           {
             title: "商品ID",
@@ -318,13 +451,13 @@ const ProductList: React.FC = () => {
             width: 120,
             render: (text: string) => <span style={{ fontSize: '16px', fontWeight: 'bold' }}>{text}</span>
           },
-          { 
-            title: "商品名称", 
+          {
+            title: "商品名称",
             dataIndex: "goods_name",
             width: 300,
-            render: (name: string) => (
-              <div style={{ 
-                maxWidth: 300, 
+            render: (name: string | undefined) => (
+              <div style={{
+                maxWidth: 300,
                 wordBreak: 'break-word',
                 lineHeight: '1.4',
                 display: '-webkit-box',
@@ -333,7 +466,7 @@ const ProductList: React.FC = () => {
                 overflow: 'hidden',
                 textOverflow: 'ellipsis'
               }}>
-                {name}
+                {name || ""}
               </div>
             )
           },
@@ -345,13 +478,13 @@ const ProductList: React.FC = () => {
               const isAllSite = record.site_num === 1 &&
                 Array.isArray(record.punish_detail_list) &&
                 record.punish_detail_list.some((d: any) => d.site_id === -1);
-              
+
               // 检查是否包含美国站违规
               const hasUSViolation = Array.isArray(record.punish_detail_list) &&
                 record.punish_detail_list.some((d: any) => d.site_id === 100);
-              
+
               const punishNum = (record as any).punish_num || 0;
-              
+
               return (
                 <div style={{ fontSize: '14px' }}>
                   {/* 违规站点数 */}
@@ -366,16 +499,16 @@ const ProductList: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  
+
                   {/* 违规记录数 */}
                   <div style={{ marginBottom: '2px', color: '#666' }}>
                     {punishNum} 条记录
                   </div>
-                  
+
                   {/* 美国站标识 */}
                   {hasUSViolation && (
                     <div>
-                      <span style={{ 
+                      <span style={{
                         backgroundColor: '#ff4d4f',
                         color: '#fff',
                         padding: '2px 6px',
@@ -393,11 +526,20 @@ const ProductList: React.FC = () => {
           },
           {
             title: "操作",
-            width: 100,
+            width: 180,
             render: (_, record) => (
-              <Button type="link" style={{ fontSize: 16, padding: 20, border: '1px solid #00f' }} onClick={() => openDetail(record)}>
-                详情
-              </Button>
+              <Space>
+                <Button
+                  type="link"
+                  style={{ fontSize: 16, padding: 10, border: '1px solid #00f' }}
+                  onClick={() => openDetail(record)}
+                >
+                  详情
+                </Button>
+                {record.processed_status === 1 && (
+                  <Tag color="success" style={{ marginLeft: 4 }}>已处理</Tag>
+                )}
+              </Space>
             ),
           },
         ]}
@@ -432,4 +574,4 @@ const ProductList: React.FC = () => {
   );
 };
 
-export default ProductList; 
+export default ProductList;
