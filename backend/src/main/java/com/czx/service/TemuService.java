@@ -9,18 +9,20 @@ public interface TemuService {
      * @param userId 用户ID
      * @param page 页码
      * @param pageSize 每页大小
+     * @param violationType 违规类型（可选）
      * @return 违规列表数据
      */
-    Map<String, Object> getComplianceList(Integer userId, int page, int pageSize);
+    Map<String, Object> getComplianceList(Integer userId, int page, int pageSize, Integer violationType);
     
     /**
      * 获取违规总数
      * @param userId 用户ID
      * @param page 页码
      * @param pageSize 每页大小
+     * @param violationType 违规类型（可选）
      * @return 违规总数
      */
-    Integer getComplianceTotal(Integer userId, int page, int pageSize);
+    Integer getComplianceTotal(Integer userId, int page, int pageSize, Integer violationType);
     
     /**
      * 获取商品列表

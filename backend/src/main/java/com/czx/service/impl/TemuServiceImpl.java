@@ -82,7 +82,7 @@ public class TemuServiceImpl implements TemuService {
     }
     
     @Override
-    public Map<String, Object> getComplianceList(Integer userId, int page, int pageSize) {
+    public Map<String, Object> getComplianceList(Integer userId, int page, int pageSize, Integer violationType) {
         try {
             // 根据用户ID获取配置
             UserConfig config = userConfigService.getConfigByUserId(userId);
@@ -99,6 +99,11 @@ public class TemuServiceImpl implements TemuService {
             payload.put("page_num", page);
             payload.put("page_size", pageSize);
             payload.put("target_type", "goods");
+            
+            // 如果指定了违规类型，添加到请求参数中
+            if (violationType != null) {
+                payload.put("violation_type", violationType);
+            }
             
             Optional<JsonNode> response = networkRequest.post(api_url, payload, agentseller_cookie, mallid, origin_url);
             if (response.isEmpty()) {
@@ -158,7 +163,7 @@ public class TemuServiceImpl implements TemuService {
     }
     
     @Override
-    public Integer getComplianceTotal(Integer userId, int page, int pageSize) {
+    public Integer getComplianceTotal(Integer userId, int page, int pageSize, Integer violationType) {
         try {
             // 根据用户ID获取配置
             UserConfig config = userConfigService.getConfigByUserId(userId);
@@ -175,6 +180,11 @@ public class TemuServiceImpl implements TemuService {
             payload.put("page_num", page);
             payload.put("page_size", pageSize);
             payload.put("target_type", "goods");
+            
+            // 如果指定了违规类型，添加到请求参数中
+            if (violationType != null) {
+                payload.put("violation_type", violationType);
+            }
             
             Optional<JsonNode> response = networkRequest.post(api_url, payload, agentseller_cookie, mallid, origin_url);
             if (response.isEmpty()) {

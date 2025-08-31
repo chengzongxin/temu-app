@@ -20,6 +20,7 @@ public class TemuController {
     public Result getComplianceList(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int page_size,
+            @RequestParam(required = false) Integer violation_type,
             HttpServletRequest request) {
         
         // 检查用户是否已认证
@@ -34,8 +35,8 @@ public class TemuController {
         }
         
         try {
-            // 调用Service层，传递用户ID
-            var result = temuService.getComplianceList(userId, page, page_size);
+            // 调用Service层，传递用户ID和违规类型
+            var result = temuService.getComplianceList(userId, page, page_size, violation_type);
             if ((Boolean) result.get("success")) {
                 return Result.success(result.get("items"));
             } else {
@@ -50,6 +51,7 @@ public class TemuController {
     public Result getComplianceTotal(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) Integer violation_type,
             HttpServletRequest request) {
         
         // 检查用户是否已认证
@@ -64,8 +66,8 @@ public class TemuController {
         }
         
         try {
-            // 调用Service层，传递用户ID
-            Integer total = temuService.getComplianceTotal(userId, page, pageSize);
+            // 调用Service层，传递用户ID和违规类型
+            Integer total = temuService.getComplianceTotal(userId, page, pageSize, violation_type);
             return Result.success(total);
         } catch (Exception e) {
             return Result.error("获取违规总数失败: " + e.getMessage());

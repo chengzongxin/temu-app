@@ -20,15 +20,24 @@ const ProductList: React.FC = () => {
   const [customMin, setCustomMin] = useState<number>(80); // 自定义最小值
   const [customMax, setCustomMax] = useState<number>(999); // 自定义最大值
   const [showUSViolation, setShowUSViolation] = useState<boolean>(false); // 美国站违规筛选
-  const [violationDesc, setViolationDesc] = useState<string | null>(null); // 违规描述筛选
+  const [violationDesc, setViolationDesc] = useState<string[]>([]); // 违规描述筛选（支持多选）
+  const [violationType, setViolationType] = useState<number | undefined>(undefined); // 违规类型筛选
   const notify = useGlobalNotification();
   const { user, token, isAuthenticated } = useAuth();
 
   // 违规描述选项状态
-  const [violationDescOptions, setViolationDescOptions] = useState<Array<{ label: string, value: string | null }>>([
-    { label: "全部类型", value: "" },
-    { label: "加载中...", value: "loading" }
+  const [violationDescOptions, setViolationDescOptions] = useState<Array<{ label: string, value: string }>>([    { label: "加载中...", value: "loading" }
   ]);
+
+  // 违规类型选项
+  const violationTypeOptions = [
+    { code: 1, display_desc: "违反禁售政策", can_select: true },
+    { code: 2, display_desc: "违反限售政策", can_select: true },
+    { code: 3, display_desc: "内容信息违规", can_select: true },
+    { code: 4, display_desc: "知识产权投诉", can_select: true },
+    { code: 5, display_desc: "知识产权违规", can_select: true },
+    { code: 6, display_desc: "入驻信息违规", can_select: true }
+  ];
 
   // 获取违规描述选项列表
   const fetchViolationDescOptions = async () => {
@@ -40,16 +49,13 @@ const ProductList: React.FC = () => {
       });
       const data = await res.json();
       if (data.code === 1 && Array.isArray(data.data)) {
-        // 转换后端数据为Select组件需要的格式
-        const options = [
-          ...data.data
-        ];
+        // 转换后端数据为Select组件需要的格式，多选模式下不需要"全部类型"选项
+        const options = data.data.filter((item: any) => item.value !== ""); // 过滤掉"全部类型"选项
         setViolationDescOptions(options);
       } else {
         console.error("获取违规描述选项失败:", data.msg);
-        // 使用默认选项
+        // 使用默认选项（多选模式下不包含"全部类型"）
         setViolationDescOptions([
-          { label: "全部类型", value: "" },
           { label: "疑似版权侵权", value: "疑似版权侵权" },
           { label: "使用了未经授权的商标", value: "使用了未经授权的商标" },
           { label: "商品信息存在成人类信息的内容", value: "商品信息存在成人类信息的内容" }
@@ -57,9 +63,8 @@ const ProductList: React.FC = () => {
       }
     } catch (error) {
       console.error("获取违规描述选项出错:", error);
-      // 使用默认选项
+      // 使用默认选项（多选模式下不包含"全部类型"）
       setViolationDescOptions([
-        { label: "全部类型", value: "" },
         { label: "疑似版权侵权", value: "疑似版权侵权" },
         { label: "使用了未经授权的商标", value: "使用了未经授权的商标" },
         { label: "商品信息存在成人类信息的内容", value: "商品信息存在成人类信息的内容" }
@@ -72,7 +77,19 @@ const ProductList: React.FC = () => {
     setLoading(true);
     // 清理选择状态，避免缓存问题
     setSelectedRowKeys([]);
-    const res = await fetch(`/api/temu/compliance/list?page=${pageNum}&page_size=${size}`, {
+    
+    // 构建查询参数
+    const params = new URLSearchParams({
+      page: pageNum.toString(),
+      page_size: size.toString()
+    });
+    
+    // 添加违规类型参数
+    if (violationType !== undefined) {
+      params.append('violation_type', violationType.toString());
+    }
+    
+    const res = await fetch(`/api/temu/compliance/list?${params.toString()}`, {
       headers: {
         "token": `${token}`
       }
@@ -87,7 +104,18 @@ const ProductList: React.FC = () => {
   };
 
   const fetchTotal = async (pageNum = page, size = pageSize) => {
-    const res = await fetch(`/api/temu/compliance/total?page=${pageNum}&page_size=${size}`, {
+    // 构建查询参数
+    const params = new URLSearchParams({
+      page: pageNum.toString(),
+      page_size: size.toString()
+    });
+    
+    // 如果选择了违规类型，添加到参数中
+    if (violationType) {
+      params.append('violation_type', violationType.toString());
+    }
+    
+    const res = await fetch(`/api/temu/compliance/total?${params.toString()}`, {
       headers: {
         "token": `${token}`
       }
@@ -110,6 +138,16 @@ const ProductList: React.FC = () => {
     // eslint-disable-next-line
   }, []);
 
+  // 当违规类型改变时重新获取数据
+  useEffect(() => {
+    // 只有在组件已经初始化后才重新获取数据
+    if (products.length > 0) {
+      fetchProducts(page, pageSize);
+      fetchTotal(page, pageSize);
+    }
+    // eslint-disable-next-line
+  }, [violationType]);
+
   // 批量下架
   const handleOffline = async () => {
     if (selectedRowKeys.length === 0) {
@@ -127,7 +165,7 @@ const ProductList: React.FC = () => {
           "Content-Type": "application/json",
           "token": `${token}`
         },
-        body: JSON.stringify({ productIds: selectedRowKeys.map(String) }),
+        body: JSON.stringify({ productIds: selectedRowKeys.map(key => key.toString().split('_')[0]) }),
       });
       const productData = await productRes.json();
       message.destroy(); // 清除loading消息
@@ -164,11 +202,11 @@ const ProductList: React.FC = () => {
         const data = await res.json();
         message.destroy(); // 清除loading消息
 
-        if (data.code === 1) {
+        if (data.code === 1 && data.data) {
           // 显示详细的下架结果
-          const successCount = data.summary?.success || 0;
-          const failCount = data.summary?.failed || 0;
-          const totalCount = data.summary?.total || 0;
+          const successCount = data.data.summary?.success || 0;
+          const failCount = data.data.summary?.failed || 0;
+          const totalCount = data.data.summary?.total || 0;
 
           notify({
             type: 'info',
@@ -180,7 +218,7 @@ const ProductList: React.FC = () => {
                   <span style={{ color: 'red', marginLeft: 16 }}>下架失败：{failCount} 个</span>
                   <span style={{ color: 'blue', marginLeft: 16 }}>总计：{totalCount} 个</span>
                 </div>
-                {data.results && data.results.map((item: any) => (
+                {data.data.results && data.data.results.map((item: any) => (
                   <div key={item.productId} style={{ marginBottom: 8, fontSize: '13px' }}>
                     SKC ID: {item.productId} - {item.success ? (
                       <span style={{ color: 'green' }}>{item.message}</span>
@@ -192,6 +230,44 @@ const ProductList: React.FC = () => {
               </div>
             ) as any,
           });
+
+          // 标记选中商品为已处理
+          try {
+            const markProcessedPromises = selectedRowKeys.map(async (key) => {
+              const spuId = key.toString().split('_')[0];
+              const product = products.find(p => p.spu_id == spuId);
+              if (product && product.processed_status !== 1) {
+                const res = await fetch(`/api/temu/compliance/status`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    "token": `${token}`
+                  },
+                  body: JSON.stringify({
+                    productId: spuId,
+                    status: 1
+                  })
+                });
+                const data = await res.json();
+                if (data.code === 1) {
+                  return spuId;
+                }
+              }
+              return null;
+            });
+            
+            const processedIds = await Promise.all(markProcessedPromises);
+            const validProcessedIds = processedIds.filter(id => id !== null);
+            
+            if (validProcessedIds.length > 0) {
+              // 更新本地数据状态
+              setProducts(products.map(item =>
+                validProcessedIds.includes(item.spu_id) ? { ...item, processed_status: 1 } : item
+              ));
+            }
+          } catch (error) {
+            console.error("标记处理状态失败:", error);
+          }
 
           // 刷新列表并清空选择
           fetchProducts(page, pageSize);
@@ -227,9 +303,16 @@ const ProductList: React.FC = () => {
       if (!hasUSViolation) return false;
     }
 
-    // 违规描述筛选
-    if (violationDesc !== null && violationDesc !== "") {
-      if (!record.violation_desc || !record.violation_desc.includes(violationDesc)) {
+    // 违规描述筛选（支持多选）
+    if (violationDesc.length > 0) {
+      if (!record.violation_desc) {
+        return false;
+      }
+      // 检查是否包含任一选中的违规类型（OR条件）
+      const hasMatchingViolation = violationDesc.some(selectedDesc => 
+        record.violation_desc.includes(selectedDesc)
+      );
+      if (!hasMatchingViolation) {
         return false;
       }
     }
@@ -305,23 +388,96 @@ const ProductList: React.FC = () => {
           borderRadius: 8,
           alignItems: 'center'
         }}>
-          {/* 违规描述筛选 */}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <span style={{ marginRight: 8, fontWeight: 'bold' }}>违规描述:</span>
+          {/* 违规类型筛选 */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ marginRight: 8, fontWeight: 'bold', whiteSpace: 'nowrap' }}>违规类型:</span>
             <Select
-              value={violationDesc}
-              onChange={setViolationDesc}
-              style={{ width: 280 }}
-              placeholder="选择违规描述"
+              value={violationType}
+              onChange={setViolationType}
+              style={{ width: 200 }}
+              placeholder="选择违规类型"
+              allowClear
               showSearch
               optionFilterProp="label"
             >
+              {violationTypeOptions.filter(option => option.can_select).map((option) => (
+                <Select.Option key={option.code} value={option.code} label={option.display_desc}>
+                  {option.display_desc}
+                </Select.Option>
+              ))}
+            </Select>
+          </div>
+
+          {/* 违规描述筛选 */}
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span style={{ marginRight: 8, fontWeight: 'bold', whiteSpace: 'nowrap' }}>违规描述:</span>
+            <Select
+              mode="multiple"
+              value={violationDesc}
+              onChange={setViolationDesc}
+              style={{ 
+                width: 350, 
+                minHeight: 32,
+                maxWidth: '100%'
+              }}
+              placeholder="选择违规描述（可多选）"
+              showSearch
+              optionFilterProp="label"
+              maxTagCount="responsive"
+              allowClear
+              dropdownStyle={{ maxHeight: 300, overflow: 'auto' }}
+              tagRender={(props) => {
+                const { label, closable, onClose } = props;
+                return (
+                  <span
+                    style={{
+                      display: 'inline-block',
+                      backgroundColor: '#1890ff',
+                      color: '#fff',
+                      padding: '2px 8px',
+                      margin: '2px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      maxWidth: '120px',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}
+                    title={String(label)}
+                  >
+                    {label}
+                    {closable && (
+                      <span
+                        style={{
+                          marginLeft: '4px',
+                          cursor: 'pointer',
+                          fontSize: '10px'
+                        }}
+                        onClick={onClose}
+                      >
+                        ×
+                      </span>
+                    )}
+                  </span>
+                );
+              }}
+            >
               {violationDescOptions.map((option) => (
-                <Select.Option key={option.value || ""} value={option.value || ""}>
+                <Select.Option key={option.value} value={option.value}>
                   {option.label}
                 </Select.Option>
               ))}
             </Select>
+            {violationDesc.length > 0 && (
+              <span style={{ 
+                marginLeft: 8, 
+                fontSize: '12px', 
+                color: '#666',
+                whiteSpace: 'nowrap'
+              }}>
+                已选 {violationDesc.length} 项
+              </span>
+            )}
           </div>
 
           {/* 美国站违规筛选 */}
@@ -416,7 +572,7 @@ const ProductList: React.FC = () => {
       style={{ height: 'calc(100vh - 64px - 48px)' }}
     >
       <Table
-        rowKey={(record) => record.spu_id}
+        rowKey={(record, index) => `${record.spu_id}_${index}`}
         rowSelection={{
           selectedRowKeys,
           onChange: setSelectedRowKeys,
